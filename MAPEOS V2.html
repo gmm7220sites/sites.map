@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Personal para Mapeos</title>
+    <!-- Incluye Tailwind CSS para un diseño moderno y responsive -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .nav-button.active {
+            background-color: #3b82f6; /* Azul 500 */
+            color: white;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 24px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 12px;
+            position: relative;
+        }
+        .toggle-switch-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #dc2626; /* bg-red-600 */
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: #16a34a; /* bg-green-600 */
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+        .conflict-highlight {
+            background-color: #fee2e2; /* bg-red-100 */
+            border-color: #ef4444; /* border-red-500 */
+            border-width: 2px;
+        }
+        .vestimenta-btn {
+            cursor: pointer;
+            font-size: 1.5rem;
+            padding: 4px;
+            border-radius: 8px;
+            background-color: #e2e8f0; /* bg-slate-200 */
+            transition: background-color 0.2s ease;
+        }
+        .vestimenta-btn:hover {
+            background-color: #cbd5e1; /* bg-slate-300 */
+        }
+        .programacion-card {
+            position: relative;
+            overflow: hidden;
+            border-top: 4px solid;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-slate-900">Panel de Control de Mapeos</h1>
+            <p class="text-slate-600 mt-2">Gestiona tu personal y asigna turnos para los locales.</p>
+        </header>
+        
+        <!-- Contenedor para mensajes de estado -->
+        <div id="status-message-container" class="fixed top-4 right-4 z-50"></div>
+
+        <nav class="flex justify-center bg-slate-200 rounded-lg p-2 mb-8">
+            <button id="btn-gestion" class="nav-button active flex-1 text-center py-2 px-4 rounded-md font-semibold transition-colors duration-300">Gestión de Personal</button>
+            <button id="btn-mapeo" class="nav-button flex-1 text-center py-2 px-4 rounded-md font-semibold transition-colors duration-300">Mapeo Semanal</button>
+            <button id="btn-programacion" class="nav-button flex-1 text-center py-2 px-4 rounded-md font-semibold transition-colors duration-300">Programación Personal</button>
+        </nav>
+
+        <main>
+            <!-- Sección de Gestión de Personal -->
+            <section id="section-gestion">
+                <!-- Panel de Gestión de Locales -->
+                <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+                    <h2 class="text-2xl font-bold mb-4 text-slate-900">Gestión de Locales</h2>
+                    <p class="text-slate-600 mb-6">Añade nuevos locales que aparecerán como opciones en toda la aplicación.</p>
+                    <form id="form-locales" class="flex gap-4 mb-6">
+                        <input type="text" id="nuevo-local" placeholder="Nombre del nuevo local" class="flex-grow p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                        <button type="submit" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition-colors duration-300">Agregar Local</button>
+                    </form>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-100">
+                                <tr>
+                                    <th class="p-3 font-semibold">Local</th>
+                                    <th class="p-3 font-semibold text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-locales">
+                                <!-- Filas de locales se insertarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Panel de Gestión de Cantidad de Puestos y Horarios -->
+                <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+                    <h2 class="text-2xl font-bold mb-4 text-slate-900">Gestión de Hora</h2>
+                    <p class="text-slate-600 mb-6">Define el número y horario de los puestos y cacheos disponibles para cada local y día de la semana.</p>
+                    <div id="mapeo-config-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Los controles de cantidad de puestos y horarios se generarán dinámicamente aquí -->
+                    </div>
+                </div>
+
+                <!-- Panel de Gestión de Personal -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-slate-900">Base de Datos del Personal</h2>
+                    <p class="text-slate-600 mb-6">Añade, edita o elimina miembros de tu equipo. La información que agregues aquí, incluyendo los locales preferidos, estará disponible para las asignaciones en el Mapeo Semanal.</p>
+
+                    <!-- Botón para agregar personal de prueba -->
+                    <div class="flex justify-end mb-4">
+                        <button id="add-test-personal-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600 transition-colors duration-300">Añadir Personal de Prueba</button>
+                    </div>
+
+                    <form id="form-personal" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <input type="text" id="nombre" placeholder="Nombre" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                        <input type="text" id="apellido" placeholder="Apellido" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                        <input type="tel" id="telefono" placeholder="Número de Teléfono" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                        <select id="disponibilidad" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                            <option value="disponible">Disponible</option>
+                            <option value="no-disponible">No Disponible</option>
+                        </select>
+                        <select id="local1" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Local Preferido 1</option>
+                        </select>
+                        <select id="local2" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Local Preferido 2</option>
+                        </select>
+                        <select id="local3" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:focus:border-blue-500">
+                            <option value="">Local Preferido 3</option>
+                        </select>
+                        <button type="submit" class="col-span-1 md:col-span-2 lg:col-span-4 bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition-colors duration-300">Agregar Personal</button>
+                    </form>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-100">
+                                <tr>
+                                    <th class="p-3 font-semibold">Nombre Completo</th>
+                                    <th class="p-3 font-semibold">Teléfono</th>
+                                    <th class="p-3 font-semibold">Disponibilidad</th>
+                                    <th class="p-3 font-semibold">Locales Preferidos</th>
+                                    <th class="p-3 font-semibold text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-personal">
+                                <!-- Filas de personal se insertarán aquí -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección de Mapeo Semanal -->
+            <section id="section-mapeo" class="hidden">
+                 <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-slate-900">Asignación Semanal</h2>
+                    <p class="text-slate-600 mb-6">Selecciona el personal disponible para cada puesto. Utiliza el filtro para ver solo al personal adecuado para cada local.</p>
+
+                    <div class="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
+                        <label for="semana-mapeo" class="text-slate-700 font-semibold whitespace-nowrap">Seleccionar Semana:</label>
+                        <input type="week" id="semana-mapeo" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <label for="filtro-local" class="text-slate-700 font-semibold whitespace-nowrap">Filtrar por Local Preferido:</label>
+                        <select id="filtro-local" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="todos">Todos</option>
+                        </select>
+                    </div>
+
+                    <!-- New buttons for clearing and downloading -->
+                    <div class="flex justify-end gap-2 mb-6">
+                        <button id="btn-limpiar-mapeo" class="bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-600 transition-colors duration-300">Limpiar Mapeo</button>
+                        <button id="btn-descargar-excel" class="bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600 transition-colors duration-300">Descargar Excel</button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8" id="mapeo-container">
+                        <!-- Las columnas de mapeo se generarán dinámicamente aquí -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección de Programación Personal -->
+            <section id="section-programacion" class="hidden">
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-slate-900">Programación Semanal por Personal</h2>
+                    <p class="text-slate-600 mb-6">Haz clic en el nombre de un miembro del personal para ver sus asignaciones para la semana.</p>
+
+                    <div class="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
+                        <label for="semana-programacion" class="text-slate-700 font-semibold whitespace-nowrap">Seleccionar Semana:</label>
+                        <input type="week" id="semana-programacion" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div id="programacion-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Las tarjetas de programación se insertarán aquí -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal de Edición de Personal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold mb-4">Editar Personal</h3>
+            <form id="form-edit-personal" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="edit-index">
+                <input type="text" id="edit-nombre" placeholder="Nombre" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                <input type="text" id="edit-apellido" placeholder="Apellido" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                <input type="tel" id="edit-telefono" placeholder="Número de Teléfono" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                <select id="edit-disponibilidad" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                    <option value="disponible">Disponible</option>
+                    <option value="no-disponible">No Disponible</option>
+                </select>
+                <select id="edit-local1" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Local Preferido 1</option>
+                </select>
+                <select id="edit-local2" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Local Preferido 2</option>
+                </select>
+                <select id="edit-local3" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Local Preferido 3</option>
+                </select>
+                <button type="submit" class="col-span-2 bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600 transition-colors duration-300">Guardar Cambios</button>
+                <button type="button" id="close-modal" class="col-span-2 bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-md hover:bg-slate-400 transition-colors duration-300">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Edición de Locales -->
+    <div id="edit-local-modal" class="modal">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold mb-4">Editar Local</h3>
+            <form id="form-edit-local" class="flex flex-col gap-4">
+                <input type="hidden" id="edit-local-index">
+                <input type="text" id="edit-local-nombre" placeholder="Nombre del local" class="p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                <button type="submit" class="bg-green-500 text-white font-bold py-2 px-4 rounded-md hover:bg-green-600 transition-colors duration-300">Guardar Cambios</button>
+                <button type="button" id="close-local-modal" class="bg-slate-300 text-slate-800 font-bold py-2 px-4 rounded-md hover:bg-slate-400 transition-colors duration-300">Cancelar</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal genérico para mensajes -->
+    <div id="message-modal" class="modal">
+        <div class="modal-content text-center">
+            <p id="modal-message-text" class="text-xl mb-4 text-slate-800"></p>
+            <button id="close-message-modal" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition-colors duration-300">Cerrar</button>
+        </div>
+    </div>
+    
+    <!-- Script para generar XLSX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const state = {
+                personal: [],
+                asignaciones: {},
+                confirmaciones: {},
+                vestimentaAsignaciones: {},
+                locales: ['liv', 'bm'],
+                mapeoConfig: {},
+                selectedWeek: ''
+            };
+
+            const diasSemana = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+            const diasSemanaFull = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+            const vestimentaTipos = ['Terno', 'Táctico'];
+            const vestimentaEmojis = {'Terno': '👔', 'Táctico': '👕'};
+
+            const formPersonal = document.getElementById('form-personal');
+            const tablaPersonal = document.getElementById('tabla-personal');
+            const btnGestion = document.getElementById('btn-gestion');
+            const btnMapeo = document.getElementById('btn-mapeo');
+            const btnProgramacion = document.getElementById('btn-programacion');
+            const sectionGestion = document.getElementById('section-gestion');
+            const sectionMapeo = document.getElementById('section-mapeo');
+            const sectionProgramacion = document.getElementById('section-programacion');
+            const filtroLocal = document.getElementById('filtro-local');
+            const editModal = document.getElementById('edit-modal');
+            const closeModalBtn = document.getElementById('close-modal');
+            const formEditPersonal = document.getElementById('form-edit-personal');
+            const semanaInputMapeo = document.getElementById('semana-mapeo');
+            const semanaInputProgramacion = document.getElementById('semana-programacion');
+            const mapeoContainer = document.getElementById('mapeo-container');
+            const programacionContainer = document.getElementById('programacion-container');
+            const btnLimpiarMapeo = document.getElementById('btn-limpiar-mapeo');
+            const btnDescargarExcel = document.getElementById('btn-descargar-excel');
+
+            const formLocales = document.getElementById('form-locales');
+            const tablaLocales = document.getElementById('tabla-locales');
+            const editLocalModal = document.getElementById('edit-local-modal');
+            const closeLocalModalBtn = document.getElementById('close-local-modal');
+            const formEditLocal = document.getElementById('form-edit-local');
+            const mapeoConfigContainer = document.getElementById('mapeo-config-container');
+
+            const addTestPersonalBtn = document.getElementById('add-test-personal-btn');
+
+            const messageModal = document.getElementById('message-modal');
+            const modalMessageText = document.getElementById('modal-message-text');
+            const closeMessageModal = document.getElementById('close-message-modal');
+
+            // --- Funciones de utilidad ---
+
+            // Función para mostrar mensajes de estado con un temporizador
+            function showStatusMessage(message, type = 'success') {
+                const container = document.getElementById('status-message-container');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `p-4 rounded-xl shadow-md mb-2 transition-opacity duration-500 ease-in-out opacity-0 translate-x-full transform`;
+
+                if (type === 'success') {
+                    messageDiv.classList.add('bg-green-100', 'text-green-700');
+                } else if (type === 'error') {
+                    messageDiv.classList.add('bg-red-100', 'text-red-700');
+                } else {
+                    messageDiv.classList.add('bg-blue-100', 'text-blue-700');
+                }
+
+                messageDiv.innerHTML = `<p class="font-semibold">${message}</p>`;
+                container.appendChild(messageDiv);
+
+                // Forzar el reflow para que la transición funcione
+                messageDiv.offsetHeight;
+                messageDiv.classList.remove('opacity-0', 'translate-x-full');
+                messageDiv.classList.add('opacity-100', 'translate-x-0');
+
+                setTimeout(() => {
+                    messageDiv.classList.remove('opacity-100', 'translate-x-0');
+                    messageDiv.classList.add('opacity-0', 'translate-x-full');
+                    messageDiv.addEventListener('transitionend', () => messageDiv.remove());
+                }, 3000);
+            }
+            
+            // Función para mostrar un modal de mensaje
+            function showMessageModal(message) {
+                modalMessageText.textContent = message;
+                messageModal.style.display = 'block';
+            }
+
+            closeMessageModal.addEventListener('click', () => {
+                messageModal.style.display = 'none';
+            });
+
+            // Polyfill para que getWeek() funcione en todos los navegadores
+            Date.prototype.getWeek = function() {
+                const date = new Date(this.getTime());
+                date.setHours(0, 0, 0, 0);
+                date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+                const week1 = new Date(date.getFullYear(), 0, 4);
+                return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+            };
+
+            function guardarEstado() {
+                localStorage.setItem('mapeoAppState', JSON.stringify(state));
+            }
+
+            function cargarEstado() {
+                const estadoGuardado = localStorage.getItem('mapeoAppState');
+                if (estadoGuardado) {
+                    const estadoParseado = JSON.parse(estadoGuardado);
+                    state.personal = estadoParseado.personal || [];
+                    state.asignaciones = estadoParseado.asignaciones || {};
+                    state.confirmaciones = estadoParseado.confirmaciones || {};
+                    state.vestimentaAsignaciones = estadoParseado.vestimentaAsignaciones || {};
+                    state.locales = estadoParseado.locales || ['liv', 'bm'];
+                    state.mapeoConfig = estadoParseado.mapeoConfig || {};
+                    state.selectedWeek = estadoParseado.selectedWeek || '';
+                }
+
+                // Inicializa la configuración de mapeo si no existe
+                state.locales.forEach(local => {
+                    if (!state.mapeoConfig[local]) {
+                        state.mapeoConfig[local] = {};
+                    }
+                    diasSemana.forEach(dia => {
+                        if (!state.mapeoConfig[local][dia]) {
+                            state.mapeoConfig[local][dia] = { puestos: 0, cacheos: 0, horaPuestos: '', horaCacheos: '' };
+                        }
+                    });
+                });
+            }
+            
+            // Función para obtener las fechas de la semana seleccionada
+            function getWeekDates(weekString) {
+                const [year, weekNum] = weekString.split('-W').map(Number);
+                const firstDayOfYear = new Date(year, 0, 1);
+                const dayOffset = (11 - firstDayOfYear.getDay()) % 7;
+                const date = new Date(year, 0, 1 + dayOffset + (weekNum - 1) * 7);
+                const dates = {};
+                const monday = new Date(date);
+                monday.setDate(date.getDate() - 3);
+
+                for (let i = 0; i < 7; i++) {
+                    const currentDay = new Date(monday);
+                    currentDay.setDate(monday.getDate() + i);
+                    dates[diasSemana[i]] = currentDay.toLocaleDateString('es-ES', { day: '2-digit', month: 'long' });
+                }
+                return dates;
+            }
+            
+            // Función para detectar conflictos de horario
+            function getConflicts(week) {
+                const assignedTimes = {};
+                const conflicts = new Set();
+                
+                // Primero, agrupar las asignaciones por persona, día y hora
+                Object.entries(state.asignaciones).forEach(([slotId, personaId]) => {
+                    if (!slotId.startsWith(week) || !personaId) return;
+
+                    const parts = slotId.split('-');
+                    const local = parts[2];
+                    const dia = parts[3];
+                    const tipo = parts[4];
+                    const hora = state.mapeoConfig[local]?.[dia]?.[`hora${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`];
+                    
+                    if (personaId && dia && hora) {
+                        const key = `${personaId}-${dia}-${hora}`;
+                        if (!assignedTimes[key]) {
+                            assignedTimes[key] = [];
+                        }
+                        assignedTimes[key].push(slotId);
+                    }
+                });
+
+                // Luego, identificar los conflictos (grupos con más de un elemento)
+                for (const key in assignedTimes) {
+                    if (assignedTimes[key].length > 1) {
+                        assignedTimes[key].forEach(slotId => conflicts.add(slotId));
+                    }
+                }
+
+                return conflicts;
+            }
+
+            // --- Funciones de Renderizado ---
+
+            function renderizarTodo() {
+                renderizarTablaPersonal();
+                renderizarTablaLocales();
+                renderizarOpcionesLocales();
+                renderizarMapeoConfig();
+                renderizarMapeo();
+                renderizarProgramacionPersonal();
+            }
+
+            function renderizarMapeoConfig() {
+                mapeoConfigContainer.innerHTML = '';
+                state.locales.forEach(local => {
+                    const div = document.createElement('div');
+                    div.className = `p-4 rounded-lg bg-sky-50 border border-sky-200`;
+                    div.innerHTML = `<h4 class="font-bold text-sky-800 mb-2">Local ${local.toUpperCase()}</h4>`;
+                    diasSemana.forEach(dia => {
+                        const config = state.mapeoConfig[local]?.[dia] || { puestos: 0, cacheos: 0, horaPuestos: '', horaCacheos: '' };
+                        const [puestosHour, puestosAmpm] = (config.horaPuestos || '').split(' ');
+                        const [cacheosHour, cacheosAmpm] = (config.horaCacheos || '').split(' ');
+                        const diaDiv = document.createElement('div');
+                        diaDiv.className = 'bg-white p-3 rounded-md shadow-sm mb-4';
+                        diaDiv.innerHTML = `
+                             <h5 class="text-sm font-semibold text-slate-700 mb-2">${diasSemanaFull[diasSemana.indexOf(dia)]}</h5>
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <label for="${local}-${dia}-puestos-count" class="text-xs text-slate-600 whitespace-nowrap">Puestos:</label>
+                                <input type="number" id="${local}-${dia}-puestos-count" data-local="${local}" data-dia="${dia}" data-type="puestos" data-part="count" class="mapeo-config-input w-16 p-2 border border-slate-300 rounded-md text-center" min="0" value="${config.puestos}">
+                                <select id="${local}-${dia}-puestos-hour" data-local="${local}" data-dia="${dia}" data-type="puestos" data-part="hour" class="mapeo-config-input w-16 p-2 border border-slate-300 rounded-md text-center">
+                                    <option value="">--</option>
+                                    ${Array.from({length: 12}, (_, i) => `<option value="${i+1}" ${puestosHour == i+1 ? 'selected' : ''}>${i+1}</option>`).join('')}
+                                </select>
+                                <select id="${local}-${dia}-puestos-ampm" data-local="${local}" data-dia="${dia}" data-type="puestos" data-part="ampm" class="mapeo-config-input w-16 p-2 border border-slate-300 rounded-md text-center">
+                                    <option value="AM" ${puestosAmpm === 'AM' ? 'selected' : ''}>AM</option>
+                                    <option value="PM" ${puestosAmpm === 'PM' ? 'selected' : ''}>PM</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <label for="${local}-${dia}-cacheos-count" class="text-xs text-slate-600 whitespace-nowrap">Cacheos:</label>
+                                <input type="number" id="${local}-${dia}-cacheos-count" data-local="${local}" data-dia="${dia}" data-type="cacheos" data-part="count" class="mapeo-config-input w-16 p-2 border border-slate-300 rounded-md text-center" min="0" value="${config.cacheos}">
+                                <select id="${local}-${dia}-cacheos-hour" data-local="${local}" data-dia="${dia}" data-type="cacheos" data-part="hour" class="mapeo-config-input w-16 p-2 border border-slate-300 rounded-md text-center">
+                                    <option value="">--</option>
+                                    ${Array.from({length: 12}, (_, i) => `<option value="${i+1}" ${cacheosHour == i+1 ? 'selected' : ''}>${i+1}</option>`).join('')}
+                                </select>
+                                <select id="${local}-${dia}-cacheos-ampm" data-local="${local}" data-dia="${dia}" data-type="cacheos" data-part="ampm" class="mapeo-config-input w-16 p-2 border border-slate-300 rounded-md text-center">
+                                    <option value="AM" ${cacheosAmpm === 'AM' ? 'selected' : ''}>AM</option>
+                                    <option value="PM" ${cacheosAmpm === 'PM' ? 'selected' : ''}>PM</option>
+                                </select>
+                            </div>
+                        `;
+                        div.appendChild(diaDiv);
+                    });
+                    mapeoConfigContainer.appendChild(div);
+                });
+
+                mapeoConfigContainer.querySelectorAll('.mapeo-config-input').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const local = e.target.dataset.local;
+                        const dia = e.target.dataset.dia;
+                        const type = e.target.dataset.type;
+                        const part = e.target.dataset.part;
+                        
+                        if (!state.mapeoConfig[local][dia]) {
+                           state.mapeoConfig[local][dia] = { puestos: 0, cacheos: 0, horaPuestos: '', horaCacheos: '' };
+                        }
+
+                        if (part === 'count') {
+                            state.mapeoConfig[local][dia][type] = parseInt(e.target.value, 10);
+                        } else { // 'hour' or 'ampm'
+                            const hourSelect = document.getElementById(`${local}-${dia}-${type}-hour`);
+                            const ampmSelect = document.getElementById(`${local}-${dia}-${type}-ampm`);
+                            const hourValue = hourSelect.value;
+                            const ampmValue = ampmSelect.value;
+                            const fullKey = `hora${type.charAt(0).toUpperCase() + type.slice(1)}`;
+
+                            if (hourValue) {
+                                state.mapeoConfig[local][dia][fullKey] = `${hourValue} ${ampmValue}`;
+                            } else {
+                                state.mapeoConfig[local][dia][fullKey] = '';
+                            }
+                        }
+                        
+                        guardarEstado();
+                        renderizarMapeo();
+                        renderizarProgramacionPersonal();
+                    });
+                });
+            }
+
+            function renderizarTablaLocales() {
+                tablaLocales.innerHTML = '';
+                if (state.locales.length === 0) {
+                    tablaLocales.innerHTML = `<tr><td colspan="2" class="text-center p-4 text-slate-500">No hay locales registrados.</td></tr>`;
+                    return;
+                }
+                state.locales.forEach((local, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-slate-200';
+                    row.innerHTML = `
+                        <td class="p-3">${local}</td>
+                        <td class="p-3 text-right space-x-2">
+                            <button data-index="${index}" class="btn-editar-local text-blue-500 hover:text-blue-700 font-semibold">Editar</button>
+                            <button data-index="${index}" class="btn-eliminar-local text-red-500 hover:text-red-700 font-semibold">Eliminar</button>
+                        </td>
+                    `;
+                    tablaLocales.appendChild(row);
+                });
+            }
+
+            function renderizarOpcionesLocales() {
+                const selectsPersonal = [
+                    document.getElementById('local1'),
+                    document.getElementById('local2'),
+                    document.getElementById('local3'),
+                    document.getElementById('edit-local1'),
+                    document.getElementById('edit-local2'),
+                    document.getElementById('edit-local3')
+                ];
+                const opcionesHTML = state.locales.map(local => `<option value="${local}">${local}</option>`).join('');
+                selectsPersonal.forEach(select => {
+                    const valorActual = select.value;
+                    select.innerHTML = `<option value="">-- Ninguno --</option>${opcionesHTML}`;
+                    select.value = valorActual;
+                });
+                const filtroOpcionesHTML = state.locales.map(local => `<option value="${local}">${local}</option>`).join('');
+                filtroLocal.innerHTML = `<option value="todos">Todos</option>${filtroOpcionesHTML}`;
+            }
+
+            function renderizarTablaPersonal() {
+                tablaPersonal.innerHTML = '';
+                if (state.personal.length === 0) {
+                    tablaPersonal.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-slate-500">No hay personal en la base de datos.</td></tr>`;
+                    return;
+                }
+                state.personal.forEach((p, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-slate-200';
+                    const disponibleClass = p.disponibilidad === 'disponible' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+                    const localesPreferidos = [p.local1, p.local2, p.local3].filter(l => l).join(', ') || 'N/A';
+                    row.innerHTML = `
+                        <td class="p-3">${p.nombre} ${p.apellido}</td>
+                        <td class="p-3">${p.telefono}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 text-sm font-medium rounded-full ${disponibleClass}">
+                                ${p.disponibilidad === 'disponible' ? 'Disponible' : 'No Disponible'}
+                            </span>
+                        </td>
+                        <td class="p-3 text-sm text-slate-600">${localesPreferidos}</td>
+                        <td class="p-3 text-right space-x-2">
+                            <button data-index="${index}" class="btn-editar text-blue-500 hover:text-blue-700 font-semibold">Editar</button>
+                            <button data-index="${index}" class="btn-eliminar text-red-500 hover:text-red-700 font-semibold">Eliminar</button>
+                        </td>
+                    `;
+                    tablaPersonal.appendChild(row);
+                });
+            }
+
+            function crearSlots(contenedorId, local, dia, tipo, conflicts) {
+                const contenedor = document.getElementById(contenedorId);
+                contenedor.innerHTML = '';
+                const cantidad = state.mapeoConfig[local]?.[dia]?.[tipo] || 0;
+                const filtro = filtroLocal.value;
+                let personalFiltrado = state.personal.filter(p => p.disponibilidad === 'disponible');
+
+                if (filtro !== 'todos') {
+                    personalFiltrado = personalFiltrado.filter(p =>
+                        p.local1 === filtro || p.local2 === filtro || p.local3 === filtro
+                    );
+                }
+
+                const hora = tipo === 'puestos' ? state.mapeoConfig[local]?.[dia]?.horaPuestos : state.mapeoConfig[local]?.[dia]?.horaCacheos;
+
+                for (let i = 1; i <= cantidad; i++) {
+                    const slotId = `${state.selectedWeek}-${local}-${dia}-${tipo}-${i}`;
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-2 relative';
+                    const select = document.createElement('select');
+                    select.dataset.id = slotId;
+                    select.dataset.type = tipo;
+                    
+                    // Añadir la clase de conflicto si existe un conflicto para este slot
+                    const isConflict = conflicts.has(slotId);
+                    const conflictClass = isConflict ? 'conflict-highlight' : '';
+
+                    select.className = `w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${conflictClass}`;
+
+                    let optionsHTML = '<option value="">-- Asignar --</option>';
+                    personalFiltrado.forEach(p => {
+                        const id = `${p.nombre}-${p.apellido}`;
+                        optionsHTML += `<option value="${id}">${p.nombre} ${p.apellido}</option>`;
+                    });
+                    select.innerHTML = optionsHTML;
+
+                    const valorGuardado = state.asignaciones[slotId];
+                    if (valorGuardado && personalFiltrado.some(p => `${p.nombre}-${p.apellido}` === valorGuardado)) {
+                         select.value = valorGuardado;
+                    } else {
+                         select.value = '';
+                    }
+
+                    const confirmationSwitch = document.createElement('div');
+                    confirmationSwitch.className = 'toggle-switch-container';
+                    const isConfirmed = state.confirmaciones[slotId] || false;
+                    confirmationSwitch.innerHTML = `
+                        <label class="toggle-switch">
+                            <input type="checkbox" data-slot-id="${slotId}" ${isConfirmed ? 'checked' : ''}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    `;
+                    confirmationSwitch.addEventListener('click', (e) => {
+                        const checkbox = confirmationSwitch.querySelector('input[type="checkbox"]');
+                        if (checkbox) {
+                            checkbox.checked = !checkbox.checked;
+                            const newConfirmedState = checkbox.checked;
+                            state.confirmaciones[slotId] = newConfirmedState;
+                            guardarEstado();
+                            renderizarProgramacionPersonal();
+                        }
+                        e.stopPropagation();
+                    });
+
+                    // Botón para cambiar el tipo de vestimenta
+                    const vestimentaActual = state.vestimentaAsignaciones[slotId] || vestimentaTipos[0];
+                    const vestimentaBtn = document.createElement('span');
+                    vestimentaBtn.className = 'vestimenta-btn';
+                    vestimentaBtn.dataset.id = slotId;
+                    vestimentaBtn.title = `Vestimenta: ${vestimentaActual}`;
+                    vestimentaBtn.textContent = vestimentaEmojis[vestimentaActual];
+                    
+                    // Evento para cambiar la vestimenta al hacer clic
+                    vestimentaBtn.addEventListener('click', () => {
+                        const currentIndex = vestimentaTipos.indexOf(state.vestimentaAsignaciones[slotId] || vestimentaTipos[0]);
+                        const nextIndex = (currentIndex + 1) % vestimentaTipos.length;
+                        const nextVestimenta = vestimentaTipos[nextIndex];
+                        state.vestimentaAsignaciones[slotId] = nextVestimenta;
+                        vestimentaBtn.textContent = vestimentaEmojis[nextVestimenta];
+                        vestimentaBtn.title = `Vestimenta: ${nextVestimenta}`;
+                        guardarEstado();
+                        renderizarProgramacionPersonal(); // Se vuelve a renderizar para que la vista de programación se actualice
+                    });
+
+                    if (hora) {
+                       const timeSpan = document.createElement('span');
+                       timeSpan.className = 'font-semibold w-24 text-sm text-slate-600 whitespace-nowrap';
+                       timeSpan.textContent = hora;
+                       div.appendChild(timeSpan);
+                    }
+                    div.innerHTML = `<span class="font-semibold w-8 text-slate-600">${i}.</span>` + div.innerHTML;
+                    div.appendChild(select);
+                    div.appendChild(vestimentaBtn); // Agrega el botón
+                    div.appendChild(confirmationSwitch);
+                    contenedor.appendChild(div);
+                }
+            }
+
+            function renderizarMapeo() {
+                const mapeoConfig = state.mapeoConfig;
+                const dates = getWeekDates(state.selectedWeek);
+                const conflicts = getConflicts(state.selectedWeek); // Calcular conflictos una vez
+                
+                mapeoContainer.innerHTML = '';
+                state.locales.forEach(local => {
+                    const hasAssignedPositions = diasSemana.some(dia => (mapeoConfig[local]?.[dia]?.puestos > 0) || (mapeoConfig[local]?.[dia]?.cacheos > 0));
+                    if (hasAssignedPositions) {
+                        const localDiv = document.createElement('div');
+                        localDiv.className = `p-4 rounded-lg border shadow-sm`;
+                        localDiv.style.backgroundColor = local === 'liv' ? '#e0f2fe' : '#fef3c7';
+                        localDiv.style.borderColor = local === 'liv' ? '#bae6fd' : '#fde68a';
+                        localDiv.innerHTML = `<h3 class="text-xl font-bold mb-4 text-center" style="color: ${local === 'liv' ? '#0369a1' : '#b45309'}">Local ${local.toUpperCase()}</h3>`;
+                        diasSemana.forEach(dia => {
+                            const puestosCount = mapeoConfig[local]?.[dia]?.puestos || 0;
+                            const cacheosCount = mapeoConfig[local]?.[dia]?.cacheos || 0;
+                            if (puestosCount > 0 || cacheosCount > 0) {
+                                const diaDiv = document.createElement('div');
+                                diaDiv.className = 'mt-6';
+                                diaDiv.innerHTML = `<h4 class="font-semibold text-lg mb-2 text-slate-700">${diasSemanaFull[diasSemana.indexOf(dia)]} (${dates[dia]})</h4>`;
+                                if (puestosCount > 0) {
+                                    diaDiv.innerHTML += `
+                                        <div class="mb-4">
+                                            <h5 class="text-md font-semibold text-slate-600 mb-2">Puestos</h5>
+                                            <div id="${local}-${dia}-puestos" class="space-y-2"></div>
+                                        </div>
+                                    `;
+                                }
+                                if (cacheosCount > 0) {
+                                    diaDiv.innerHTML += `
+                                        <div>
+                                            <h5 class="text-md font-semibold text-slate-600 mb-2">Cacheos</h5>
+                                            <div id="${local}-${dia}-cacheos" class="space-y-2"></div>
+                                        </div>
+                                    `;
+                                }
+                                localDiv.appendChild(diaDiv);
+                            }
+                        });
+                        mapeoContainer.appendChild(localDiv);
+                    }
+                });
+
+                state.locales.forEach(local => {
+                    if (mapeoConfig[local]) {
+                        diasSemana.forEach(dia => {
+                            if (mapeoConfig[local][dia]?.puestos > 0) {
+                                crearSlots(`${local}-${dia}-puestos`, local, dia, 'puestos', conflicts);
+                            }
+                            if (mapeoConfig[local][dia]?.cacheos > 0) {
+                                crearSlots(`${local}-${dia}-cacheos`, local, dia, 'cacheos', conflicts);
+                            }
+                        });
+                    }
+                });
+            }
+
+            function renderizarProgramacionPersonal() {
+                programacionContainer.innerHTML = '';
+                const dates = getWeekDates(state.selectedWeek);
+                if (state.personal.length === 0) {
+                    programacionContainer.innerHTML = '<p class="text-center text-slate-500 col-span-full">No hay personal en la base de datos para mostrar programación.</p>';
+                    return;
+                }
+                state.personal.forEach(p => {
+                    const personaId = `${p.nombre}-${p.apellido}`;
+                    const assignments = Object.entries(state.asignaciones)
+                        .filter(([id, assignedId]) => assignedId === personaId && id.startsWith(state.selectedWeek))
+                        .map(([id, assignedId]) => {
+                            const parts = id.split('-');
+                            const assignmentParts = parts.slice(2);
+                            const local = assignmentParts[0];
+                            const dia = assignmentParts[1];
+                            const tipo = assignmentParts[2];
+                            const puestoNum = assignmentParts[3];
+                            const horario = state.mapeoConfig[local]?.[dia]?.[`hora${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`];
+                            const vestimenta = state.vestimentaAsignaciones[id] || 'Terno';
+                            const isConflict = getConflicts(state.selectedWeek).has(id);
+                            return { id, local, dia, tipo, puestoNum, horario, vestimenta, confirmado: state.confirmaciones[id] || false, isConflict };
+                        }).sort((a,b) => diasSemana.indexOf(a.dia) - diasSemana.indexOf(b.dia));
+
+                    const card = document.createElement('div');
+                    card.className = 'programacion-card bg-white p-6 rounded-xl shadow-md ' + (assignments.length > 0 ? 'border-green-500' : 'border-slate-200');
+                    let assignmentsHTML = '';
+                    if (assignments.length > 0) {
+                        assignmentsHTML = `
+                            <ul class="mt-4 space-y-2">
+                                ${assignments.map(a => `
+                                    <li class="p-3 rounded-lg border border-slate-200 bg-slate-50 text-sm flex justify-between items-center ${a.isConflict ? 'conflict-highlight' : ''}">
+                                        <span>
+                                            <span class="font-bold">${diasSemanaFull[diasSemana.indexOf(a.dia)]}</span> - ${a.local.toUpperCase()} <br/>
+                                            <span class="text-xs text-slate-500">${a.tipo.charAt(0).toUpperCase() + a.tipo.slice(1)} #${a.puestoNum}</span>
+                                            <span class="text-xs text-slate-500 font-semibold">${a.horario ? ' (' + a.horario + ')' : ''}</span>
+                                            <span class="text-xs text-slate-500 font-semibold">(${a.vestimenta})</span>
+                                        </span>
+                                        <span class="font-semibold text-xs py-1 px-2 rounded-full ${a.confirmado ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}">
+                                            ${a.confirmado ? 'Confirmado' : 'Sin Confirmar'}
+                                        </span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        `;
+                    } else {
+                        assignmentsHTML = '<p class="text-slate-500 italic mt-4">No tiene asignaciones esta semana.</p>';
+                    }
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-slate-900">${p.nombre} ${p.apellido}</h3>
+                            <button class="btn-copy-programacion bg-blue-500 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition-colors duration-300 text-sm" data-persona-id="${personaId}">
+                                Copiar para Mensaje
+                            </button>
+                        </div>
+                        <p class="text-slate-600 text-sm">Disponibilidad: <span class="font-semibold">${p.disponibilidad === 'disponible' ? 'Disponible' : 'No Disponible'}</span></p>
+                        ${assignmentsHTML}
+                    `;
+                    programacionContainer.appendChild(card);
+                });
+            }
+            
+            // Función para copiar la programación en un formato de mensaje de texto
+            function copyProgramacionAsText(personaId) {
+                const persona = state.personal.find(p => `${p.nombre}-${p.apellido}` === personaId);
+                const assignments = Object.entries(state.asignaciones)
+                    .filter(([id, assignedId]) => assignedId === personaId && id.startsWith(state.selectedWeek))
+                    .map(([id, assignedId]) => {
+                        const parts = id.split('-');
+                        const assignmentParts = parts.slice(2);
+                        const local = assignmentParts[0];
+                        const dia = assignmentParts[1];
+                        const tipo = assignmentParts[2];
+                        const puestoNum = assignmentParts[3];
+                        const horario = state.mapeoConfig[local]?.[dia]?.[`hora${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`];
+                        const vestimenta = state.vestimentaAsignaciones[id] || 'Terno';
+                        const isConfirmed = state.confirmaciones[id] || false;
+                        return { dia, local, tipo, puestoNum, horario, vestimenta, isConfirmed };
+                    }).sort((a,b) => diasSemana.indexOf(a.dia) - diasSemana.indexOf(b.dia));
+
+                if (assignments.length === 0) {
+                    showMessageModal('Esta persona no tiene asignaciones para esta semana.');
+                    return;
+                }
+
+                let message = `¡Hola ${persona.nombre}! Aquí está tu programación para la semana:\n\n`;
+                
+                assignments.forEach(a => {
+                    const localText = a.local.toUpperCase();
+                    const vestimentaText = a.vestimenta;
+                    const horarioText = a.horario ? a.horario : 'No especificado';
+                    let assignmentLine;
+
+                    if (a.tipo === 'cacheos') {
+                        assignmentLine = `• ${diasSemanaFull[diasSemana.indexOf(a.dia)]} en ${localText} (con cacheo): Vestimenta: ${vestimentaText}. Horario: ${horarioText}.\n`;
+                    } else {
+                         assignmentLine = `• ${diasSemanaFull[diasSemana.indexOf(a.dia)]} en ${localText}: Vestimenta: ${vestimentaText}. Horario: ${horarioText}.\n`;
+                    }
+                    message += assignmentLine;
+                });
+                
+                message += '\nPor favor, confirma tus asignaciones. ¡Gracias!';
+
+                const tempTextarea = document.createElement('textarea');
+                tempTextarea.value = message;
+                document.body.appendChild(tempTextarea);
+                tempTextarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempTextarea);
+                
+                showStatusMessage('Programación copiada al portapapeles.');
+            }
+
+            // --- Event Listeners ---
+
+            // Función genérica para manejar los envíos de formularios y los botones de los modales
+            function handleFormSubmit(e, formId, successMessage) {
+                e.preventDefault();
+                const form = document.getElementById(formId);
+                const isFormEdit = formId.includes('edit');
+                const index = document.getElementById(`${isFormEdit ? 'edit-' : ''}local-index`)?.value;
+
+                if (formId === 'form-locales') {
+                    const nuevoLocal = document.getElementById('nuevo-local').value.toLowerCase().trim();
+                    if (nuevoLocal && !state.locales.includes(nuevoLocal)) {
+                        state.locales.push(nuevoLocal);
+                        state.mapeoConfig[nuevoLocal] = {};
+                        diasSemana.forEach(dia => state.mapeoConfig[nuevoLocal][dia] = { puestos: 0, cacheos: 0, horaPuestos: '', horaCacheos: '' });
+                        showStatusMessage('¡Local agregado con éxito!');
+                        form.reset();
+                    } else {
+                        showStatusMessage('El local ya existe o el nombre no es válido.', 'error');
+                        return;
+                    }
+                } else if (formId === 'form-personal') {
+                    const nuevoPersonal = {
+                        nombre: document.getElementById('nombre').value,
+                        apellido: document.getElementById('apellido').value,
+                        telefono: document.getElementById('telefono').value,
+                        disponibilidad: document.getElementById('disponibilidad').value,
+                        local1: document.getElementById('local1').value,
+                        local2: document.getElementById('local2').value,
+                        local3: document.getElementById('local3').value,
+                    };
+                    state.personal.push(nuevoPersonal);
+                    showStatusMessage('¡Personal agregado con éxito!');
+                    form.reset();
+                } else if (formId === 'form-edit-local') {
+                    const oldLocal = state.locales[index];
+                    const nuevoNombre = document.getElementById('edit-local-nombre').value.toLowerCase().trim();
+                    if (nuevoNombre && !state.locales.includes(nuevoNombre) && nuevoNombre !== oldLocal) {
+                        state.locales[index] = nuevoNombre;
+                        state.mapeoConfig[nuevoNombre] = state.mapeoConfig[oldLocal] || {};
+                        diasSemana.forEach(dia => {
+                            if (!state.mapeoConfig[nuevoNombre][dia]) {
+                                state.mapeoConfig[nuevoNombre][dia] = { puestos: 0, cacheos: 0, horaPuestos: '', horaCacheos: '' };
+                            }
+                        });
+                        delete state.mapeoConfig[oldLocal];
+
+                        Object.keys(state.asignaciones).forEach(key => {
+                            const parts = key.split('-');
+                            if (parts[1] === oldLocal) {
+                                parts[1] = nuevoNombre;
+                                const newKey = parts.join('-');
+                                state.asignaciones[newKey] = state.asignaciones[key];
+                                delete state.asignaciones[key];
+                            }
+                        });
+
+                        state.personal.forEach(p => {
+                            if (p.local1 === oldLocal) p.local1 = nuevoNombre;
+                            if (p.local2 === oldLocal) p.local2 = nuevoNombre;
+                            if (p.local3 === oldLocal) p.local3 = nuevoNombre;
+                        });
+                        showStatusMessage('¡Local editado con éxito!');
+                    } else if (nuevoNombre === oldLocal) {
+                         // No hacer nada si el nombre no cambió
+                    } else {
+                        showStatusMessage('El local ya existe o el nombre no es válido.', 'error');
+                        return;
+                    }
+                    editLocalModal.style.display = 'none';
+                } else if (formId === 'form-edit-personal') {
+                    const index = document.getElementById('edit-index').value;
+                    state.personal[index] = {
+                        nombre: document.getElementById('edit-nombre').value,
+                        apellido: document.getElementById('edit-apellido').value,
+                        telefono: document.getElementById('edit-telefono').value,
+                        disponibilidad: document.getElementById('edit-disponibilidad').value,
+                        local1: document.getElementById('edit-local1').value,
+                        local2: document.getElementById('edit-local2').value,
+                        local3: document.getElementById('edit-local3').value,
+                    };
+                    showStatusMessage('¡Personal editado con éxito!');
+                    editModal.style.display = 'none';
+                }
+
+                guardarEstado();
+                renderizarTodo();
+            }
+
+            formPersonal.addEventListener('submit', (e) => handleFormSubmit(e, 'form-personal'));
+            formLocales.addEventListener('submit', (e) => handleFormSubmit(e, 'form-locales'));
+            formEditPersonal.addEventListener('submit', (e) => handleFormSubmit(e, 'form-edit-personal'));
+            formEditLocal.addEventListener('submit', (e) => handleFormSubmit(e, 'form-edit-local'));
+
+            tablaPersonal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('btn-eliminar')) {
+                    const index = e.target.dataset.index;
+                    state.personal.splice(index, 1);
+                    guardarEstado();
+                    renderizarTodo();
+                    showStatusMessage('Personal eliminado con éxito.', 'info');
+                }
+                if (e.target.classList.contains('btn-editar')) {
+                    const index = e.target.dataset.index;
+                    const personal = state.personal[index];
+                    document.getElementById('edit-index').value = index;
+                    document.getElementById('edit-nombre').value = personal.nombre;
+                    document.getElementById('edit-apellido').value = personal.apellido;
+                    document.getElementById('edit-telefono').value = personal.telefono;
+                    document.getElementById('edit-disponibilidad').value = personal.disponibilidad;
+                    document.getElementById('edit-local1').value = personal.local1;
+                    document.getElementById('edit-local2').value = personal.local2;
+                    document.getElementById('edit-local3').value = personal.local3;
+                    editModal.style.display = 'block';
+                }
+            });
+
+            tablaLocales.addEventListener('click', (e) => {
+                if (e.target.classList.contains('btn-eliminar-local')) {
+                    const index = e.target.dataset.index;
+                    const localAEliminar = state.locales[index];
+                    state.locales.splice(index, 1);
+                    delete state.mapeoConfig[localAEliminar];
+                    guardarEstado();
+                    renderizarTodo();
+                    showStatusMessage('Local eliminado con éxito.', 'info');
+                }
+                if (e.target.classList.contains('btn-editar-local')) {
+                    const index = e.target.dataset.index;
+                    const local = state.locales[index];
+                    document.getElementById('edit-local-index').value = index;
+                    document.getElementById('edit-local-nombre').value = local;
+                    editLocalModal.style.display = 'block';
+                }
+            });
+
+            closeModalBtn.addEventListener('click', () => { editModal.style.display = 'none'; });
+            closeLocalModalBtn.addEventListener('click', () => { editLocalModal.style.display = 'none'; });
+
+            semanaInputMapeo.addEventListener('change', (e) => {
+                state.selectedWeek = e.target.value;
+                semanaInputProgramacion.value = state.selectedWeek;
+                guardarEstado();
+                renderizarMapeo();
+            });
+
+            semanaInputProgramacion.addEventListener('change', (e) => {
+                state.selectedWeek = e.target.value;
+                semanaInputMapeo.value = state.selectedWeek;
+                guardarEstado();
+                renderizarProgramacionPersonal();
+            });
+
+            sectionMapeo.addEventListener('change', (e) => {
+                const target = e.target;
+                if (target.tagName === 'SELECT') {
+                    const id = target.dataset.id;
+                    const valor = target.value;
+                    if (valor) {
+                        state.asignaciones[id] = valor;
+                        // Si se asigna a alguien, se le da una vestimenta por defecto
+                        if (!state.vestimentaAsignaciones[id]) {
+                           state.vestimentaAsignaciones[id] = 'Terno';
+                        }
+                    } else {
+                        delete state.asignaciones[id];
+                        delete state.confirmaciones[id];
+                        delete state.vestimentaAsignaciones[id]; // Borra también la vestimenta asignada
+                    }
+                    guardarEstado();
+                    renderizarTodo(); // Renderiza todo de nuevo para actualizar los conflictos
+                }
+            });
+
+            filtroLocal.addEventListener('change', () => { renderizarMapeo(); });
+
+            btnLimpiarMapeo.addEventListener('click', () => {
+                state.asignaciones = {};
+                state.confirmaciones = {};
+                state.vestimentaAsignaciones = {}; // Limpia las vestimentas
+                guardarEstado();
+                renderizarTodo();
+                showStatusMessage('Mapeo limpiado con éxito.', 'info');
+            });
+
+            btnDescargarExcel.addEventListener('click', () => {
+                const asignaciones = Object.entries(state.asignaciones);
+                if (asignaciones.length === 0) {
+                    showMessageModal('No hay asignaciones para descargar.');
+                    return;
+                }
+                
+                const data = asignaciones.map(([slotId, personaId]) => {
+                    const parts = slotId.split('-');
+                    const local = parts[2];
+                    const dia = parts[3];
+                    const tipo = parts[4];
+                    const persona = state.personal.find(p => `${p.nombre}-${p.apellido}` === personaId);
+
+                    const fecha = getWeekDates(state.selectedWeek)[dia];
+                    const hora = tipo === 'puestos' ? state.mapeoConfig[local]?.[dia]?.horaPuestos || 'N/A' : state.mapeoConfig[local]?.[dia]?.horaCacheos || 'N/A';
+                    const vestimenta = state.vestimentaAsignaciones[slotId] || 'N/A';
+                    const confirmado = state.confirmaciones[slotId] ? 'Sí' : 'No';
+                    const tipoAsignacion = tipo === 'puestos' ? 'Puesto' : 'Cacheo';
+
+                    return {
+                        'Nombre': persona ? persona.nombre : 'N/A',
+                        'Apellido': persona ? persona.apellido : 'N/A',
+                        'Día y Fecha': `${diasSemanaFull[diasSemana.indexOf(dia)]} (${fecha})`,
+                        'Local': local,
+                        'Tipo de Asignación': tipoAsignacion,
+                        'Horario': hora,
+                        'Vestimenta': vestimenta,
+                        'Confirmado': confirmado
+                    };
+                }).sort((a, b) => {
+                    // Ordenar por día de la semana
+                    const diaA = diasSemanaFull.indexOf(a['Día y Fecha'].split(' ')[0]);
+                    const diaB = diasSemanaFull.indexOf(b['Día y Fecha'].split(' ')[0]);
+                    return diaA - diaB;
+                });
+
+                // Crea una nueva hoja de trabajo
+                const ws = XLSX.utils.json_to_sheet(data);
+                
+                // Crea un nuevo libro de trabajo y añade la hoja
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Mapeo Semanal");
+
+                // Escribe el archivo y lo descarga
+                XLSX.writeFile(wb, `mapeo_semanal_${state.selectedWeek}.xlsx`);
+
+                showStatusMessage('Excel descargado con éxito.');
+            });
+
+            addTestPersonalBtn.addEventListener('click', () => {
+                const testPersonal = [
+                    { nombre: 'Juan', apellido: 'Pérez', telefono: '555-1234', disponibilidad: 'disponible', local1: 'liv', local2: '', local3: '' },
+                    { nombre: 'María', apellido: 'García', telefono: '555-5678', disponibilidad: 'disponible', local1: 'bm', local2: 'liv', local3: '' },
+                    { nombre: 'Pedro', apellido: 'Gómez', telefono: '555-9012', disponibilidad: 'disponible', local1: '', local2: 'bm', local3: 'liv' }
+                ];
+                testPersonal.forEach(p => {
+                    const exists = state.personal.some(existingP => existingP.nombre === p.nombre && existingP.apellido === p.apellido);
+                    if (!exists) { state.personal.push(p); }
+                });
+                guardarEstado();
+                renderizarTodo();
+                showStatusMessage('Personal de prueba agregado.');
+            });
+            
+            programacionContainer.addEventListener('click', (e) => {
+                const target = e.target.closest('.btn-copy-programacion');
+                if (target) {
+                    const personaId = target.dataset.personaId;
+                    copyProgramacionAsText(personaId);
+                }
+            });
+
+            function cambiarVista(vista) {
+                const sections = [sectionGestion, sectionMapeo, sectionProgramacion];
+                const buttons = [btnGestion, btnMapeo, btnProgramacion];
+                sections.forEach(s => s.classList.add('hidden'));
+                buttons.forEach(b => b.classList.remove('active'));
+                
+                if (vista === 'gestion') {
+                    sectionGestion.classList.remove('hidden');
+                    btnGestion.classList.add('active');
+                } else if (vista === 'mapeo') {
+                    sectionMapeo.classList.remove('hidden');
+                    btnMapeo.classList.add('active');
+                    semanaInputMapeo.value = state.selectedWeek;
+                } else if (vista === 'programacion') {
+                    sectionProgramacion.classList.remove('hidden');
+                    btnProgramacion.classList.add('active');
+                    semanaInputProgramacion.value = state.selectedWeek;
+                }
+                renderizarTodo();
+            }
+
+            btnGestion.addEventListener('click', () => cambiarVista('gestion'));
+            btnMapeo.addEventListener('click', () => cambiarVista('mapeo'));
+            btnProgramacion.addEventListener('click', () => cambiarVista('programacion'));
+
+            cargarEstado();
+            if (!state.selectedWeek) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const week = now.getWeek();
+                state.selectedWeek = `${year}-W${String(week).padStart(2, '0')}`;
+            }
+            semanaInputMapeo.value = state.selectedWeek;
+            semanaInputProgramacion.value = state.selectedWeek;
+            cambiarVista('gestion');
+        });
+    </script>
+</body>
+</html>
